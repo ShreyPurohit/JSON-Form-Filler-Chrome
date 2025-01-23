@@ -1,61 +1,55 @@
-// Observer for dynamic elements
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length) {
-            fillFormFields(window.formData || {});
-        }
-    });
-});
+// Utility functions for path operations
+const pathUtils = {
+    split: path => path.split('|'),
+    get: (obj, path) => pathUtils.split(path).reduce((curr, key) =>
+        curr && curr[key] !== undefined ? curr[key] : undefined, obj),
+    set: (obj, path, value) => {
+        const keys = pathUtils.split(path);
+        const lastKey = keys.pop();
+        const target = keys.reduce((curr, key) => (curr[key] = curr[key] || {}, curr[key]), obj);
+        target[lastKey] = value;
+    }
+};
 
-// Start observing
-observer.observe(document.body, {
-    childList: true,
-    subtree: true
-});
+// Form element handlers
+const elementHandlers = {
+    SELECT: (element, value) => element.value = value,
+    INPUT: {
+        checkbox: (element, value) => element.checked = value === true || value === 'true',
+        radio: (element, value) => element.value === value && (element.checked = true),
+        date: (element, value) => {
+            if (value) {
+                const date = new Date(value);
+                !isNaN(date) && (element.value = date.toISOString().split('T')[0]);
+            }
+        },
+        default: (element, value) => element.value = value
+    }
+};
+
+// Trigger form events
+const triggerEvents = element =>
+    ['change', 'input'].forEach(type =>
+        element.dispatchEvent(new Event(type, { bubbles: true })));
 
 // Fill form fields
 function fillFormFields(data) {
-    console.log('Filling form with data:', data);
-
-    window.formData = data; // Store data for dynamic fields
+    window.formData = data;
     let filledCount = 0;
 
-    Object.entries(data).forEach(([dataQa, value]) => {
-        const element = document.querySelector(`[data-qa="${dataQa}"]`);
+    document.querySelectorAll('[data-qa]').forEach(element => {
+        const value = pathUtils.get(data, element.getAttribute('data-qa'));
 
-        if (element) {
-            // Handle different input types
-            if (element.tagName === 'SELECT') {
-                element.value = value;
-            } else if (element.tagName === 'INPUT') {
-                switch (element.type.toLowerCase()) {
-                    case 'checkbox':
-                        element.checked = value === true || value === 'true';
-                        break;
-                    case 'radio':
-                        const radio = document.querySelector(`[data-qa="${dataQa}"][value="${value}"]`);
-                        if (radio) radio.checked = true;
-                        break;
-                    case 'date':
-                        if (value) {
-                            const date = new Date(value);
-                            if (!isNaN(date)) {
-                                element.value = date.toISOString().split('T')[0];
-                            }
-                        }
-                        break;
-                    default:
-                        element.value = value;
-                }
+        if (value !== undefined) {
+            const handler = elementHandlers[element.tagName] || elementHandlers.INPUT.default;
+
+            if (element.tagName === 'INPUT') {
+                (elementHandlers.INPUT[element.type.toLowerCase()] || elementHandlers.INPUT.default)(element, value);
             } else {
-                element.value = value;
+                handler(element, value);
             }
 
-            // Trigger change events
-            ['change', 'input'].forEach(eventType => {
-                element.dispatchEvent(new Event(eventType, { bubbles: true }));
-            });
-
+            triggerEvents(element);
             filledCount++;
         }
     });
@@ -66,84 +60,67 @@ function fillFormFields(data) {
 // Extract form data
 function extractFormData() {
     const formData = {};
-    const elements = document.querySelectorAll('[data-qa]');
 
-    elements.forEach(element => {
+    document.querySelectorAll('[data-qa]').forEach(element => {
         const dataQa = element.getAttribute('data-qa');
         if (!dataQa) return;
 
         let value;
+        const type = element.type?.toLowerCase();
+
         if (element.tagName === 'SELECT') {
             value = element.value;
         } else if (element.tagName === 'INPUT') {
-            switch (element.type.toLowerCase()) {
-                case 'checkbox':
-                    value = element.checked;
-                    break;
-                case 'radio':
-                    if (element.checked) {
-                        value = element.value;
-                    }
-                    break;
-                case 'date':
-                    value = element.value;
-                    if (value) {
-                        try {
-                            value = new Date(value).toISOString();
-                        } catch (e) {
-                            console.error(`Error converting date value for ${dataQa}:`, e);
-                        }
-                    }
-                    break;
-                default:
-                    value = element.value;
+            if (type === 'checkbox') {
+                value = element.checked;
+            } else if (type === 'radio' && !element.checked) {
+                return;
+            } else if (type === 'date' && element.value) {
+                try {
+                    value = new Date(element.value).toISOString();
+                } catch (e) {
+                    console.error(`Date conversion error for ${dataQa}:`, e);
+                }
+            } else {
+                value = element.value;
             }
         } else {
             value = element.value;
         }
 
-        // Only add to formData if value is not undefined (handles unchecked radio buttons)
-        if (value !== undefined) {
-            formData[dataQa] = value;
-        }
+        value !== undefined && pathUtils.set(formData, dataQa, value);
     });
 
     return formData;
 }
 
-// Listen for messages from popup/background
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Content script received message:', message);
+// Initialize observer for dynamic content
+const observer = new MutationObserver(mutations => {
+    mutations.some(mutation => mutation.addedNodes.length) &&
+        window.formData && fillFormFields(window.formData);
+});
 
-    if (message.type === 'FILL_FORM') {
-        try {
-            const filledCount = fillFormFields(message.data);
-            sendResponse({
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Message handler
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+        const handlers = {
+            FILL_FORM: () => ({
                 success: true,
-                message: `Filled ${filledCount} fields successfully`
-            });
-        } catch (error) {
-            console.error('Error filling form:', error);
-            sendResponse({
-                success: false,
-                error: error.message
-            });
-        }
-    } else if (message.type === 'EXTRACT_FORM') {
-        try {
-            const formData = extractFormData();
-            sendResponse({
+                message: `Filled ${fillFormFields(message.data)} fields successfully`
+            }),
+            EXTRACT_FORM: () => ({
                 success: true,
-                data: formData
-            });
-        } catch (error) {
-            console.error('Error extracting form data:', error);
-            sendResponse({
-                success: false,
-                error: error.message
-            });
-        }
+                data: extractFormData()
+            })
+        };
+
+        sendResponse(handlers[message.type]?.() || { success: false, error: 'Invalid message type' });
+    } catch (error) {
+        console.error(`Error handling ${message.type}:`, error);
+        sendResponse({ success: false, error: error.message });
     }
 
-    return true; // Keep the message channel open
+    return true;
 });
