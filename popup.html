@@ -4,73 +4,25 @@
 <head>
     <title>JSON Form Filler</title>
     <style>
-        body {
-            width: 300px;
-            padding: 16px;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .file-input-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .file-name {
-            font-size: 14px;
-            color: #666;
-            word-break: break-all;
-        }
-
-        button {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        button:hover:not(:disabled) {
-            background: #1557b0;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        #downloadLink {
-            display: none;
-        }
+      .container,body,footer{display:flex}footer,header{background-color:#fff;position:sticky;z-index:10}body{width:300px;flex-direction:column;margin:0;font-family:system-ui,-apple-system,sans-serif;background-color:#f5f5f5;color:#4a3f35}header{padding:12px 16px;border-bottom:2px solid #c2b8ae;text-align:center;font-size:20px;font-weight:700;color:#5c4b41;top:0}.container{flex:1;padding:16px;flex-direction:column;gap:16px;overflow-y:auto}.file-input-wrapper{display:flex;flex-direction:column;gap:8px}.file-name{font-size:14px;color:#6d5f57;word-break:break-word}input[type=file]{font-size:14px;padding:6px;border:1px solid #c2b8ae;border-radius:4px;background-color:#fff;color:#4a3f35;cursor:pointer}button{background:#a67c52;color:#fff;border:none;padding:10px 14px;border-radius:4px;cursor:pointer;font-weight:500;transition:background-color .2s}button:disabled{background:#d9d2c3;cursor:not-allowed}button:hover:not(:disabled){background:#8c6239}footer{gap:8px;padding:8px;border-top:2px solid #c2b8ae;bottom:0}footer button{width:100%}#downloadLink{display:none}
     </style>
 </head>
 
 <body>
+    <header>
+        JSON Form Filler
+    </header>
     <div class="container">
-        <h2>JSON Form Filler</h2>
         <div class="file-input-wrapper">
             <input type="file" id="jsonFile" accept=".json" />
             <div id="fileName" class="file-name"></div>
         </div>
-        <div class="button-group">
-            <button id="fillForm" disabled>Fill Form</button>
-            <button id="extractForm">Extract Form Data</button>
-        </div>
         <a id="downloadLink" download="form-data.json">Download JSON</a>
     </div>
+    <footer>
+        <button id="fillForm" disabled>Fill Form</button>
+        <button id="extractForm">Extract Form Data</button>
+    </footer>
     <script src="popup.js"></script>
 </body>
 
