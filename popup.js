@@ -30,10 +30,12 @@ const ui = {
             button.textContent.replace('...', '');
     },
 
-    showFeedback: (element, message, duration = 0) => {
+    showFeedback: (element, message, duration = 0, isError = false) => {
+        element.style.color = isError ? '#dc3545' : '#666';
         element.textContent = message;
         if (duration) {
             setTimeout(() => {
+                element.style.color = '#666';
                 element.textContent = jsonData ? `Selected: ${elements.jsonFile.files[0].name}` : '';
             }, duration);
         }
@@ -42,6 +44,20 @@ const ui = {
     createDownloadUrl: (data) => {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         return URL.createObjectURL(blob);
+    },
+
+    showDetailedError: (error) => {
+        console.error('Operation error:', error);
+        const errorMessage = error.results?.errors?.map(err =>
+            `${err.field}: ${err.error}`
+        ).join('\n') || error.message;
+
+        ui.showFeedback(
+            elements.fileName,
+            `Error: ${errorMessage}`,
+            FEEDBACK_DURATION * 2,
+            true
+        );
     }
 };
 
@@ -67,7 +83,12 @@ const handlers = {
             console.error('File processing error:', error);
             jsonData = null;
             elements.fillForm.disabled = true;
-            ui.showFeedback(elements.fileName, `Error: ${error instanceof SyntaxError ? ERROR_MESSAGES.INVALID_JSON : ERROR_MESSAGES.READ_ERROR}`);
+            ui.showFeedback(
+                elements.fileName,
+                `Error: ${error instanceof SyntaxError ? ERROR_MESSAGES.INVALID_JSON : ERROR_MESSAGES.READ_ERROR}`,
+                0,
+                true
+            );
         }
     },
 
@@ -90,12 +111,16 @@ const handlers = {
                     elements.downloadLink.click();
                     URL.revokeObjectURL(url);
                 }
-                ui.showFeedback(elements.fileName, `${type === 'FILL_FORM' ? 'Form filled' : 'Form data extracted'} successfully!`, FEEDBACK_DURATION);
+                ui.showFeedback(
+                    elements.fileName,
+                    `${response.message || (type === 'FILL_FORM' ? 'Form filled' : 'Form data extracted')} successfully!`,
+                    FEEDBACK_DURATION
+                );
             } else {
-                throw new Error(response?.error || (type === 'FILL_FORM' ? ERROR_MESSAGES.FILL_FAILED : ERROR_MESSAGES.EXTRACT_FAILED));
+                throw response;
             }
         } catch (error) {
-            ui.showFeedback(elements.fileName, `Error: ${error.message}`);
+            ui.showDetailedError(error);
         } finally {
             ui.setButtonState(button, false);
         }
