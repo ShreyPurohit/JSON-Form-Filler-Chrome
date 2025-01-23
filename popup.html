@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>JSON Form Filler</title>
+    <style>
+        body {
+            width: 300px;
+            padding: 16px;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .file-input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .file-name {
+            font-size: 14px;
+            color: #666;
+            word-break: break-all;
+        }
+
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background: #1557b0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>JSON Form Filler</h2>
+        <div class="file-input-wrapper">
+            <input type="file" id="jsonFile" accept=".json" />
+            <div id="fileName" class="file-name"></div>
+        </div>
+        <button id="fillForm" disabled>Fill Form</button>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>
