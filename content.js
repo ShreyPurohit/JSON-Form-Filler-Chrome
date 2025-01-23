@@ -36,6 +36,14 @@ function fillFormFields(data) {
                         const radio = document.querySelector(`[data-qa="${dataQa}"][value="${value}"]`);
                         if (radio) radio.checked = true;
                         break;
+                    case 'date':
+                        if (value) {
+                            const date = new Date(value);
+                            if (!isNaN(date)) {
+                                element.value = date.toISOString().split('T')[0];
+                            }
+                        }
+                        break;
                     default:
                         element.value = value;
                 }
@@ -55,6 +63,54 @@ function fillFormFields(data) {
     return filledCount;
 }
 
+// Extract form data
+function extractFormData() {
+    const formData = {};
+    const elements = document.querySelectorAll('[data-qa]');
+
+    elements.forEach(element => {
+        const dataQa = element.getAttribute('data-qa');
+        if (!dataQa) return;
+
+        let value;
+        if (element.tagName === 'SELECT') {
+            value = element.value;
+        } else if (element.tagName === 'INPUT') {
+            switch (element.type.toLowerCase()) {
+                case 'checkbox':
+                    value = element.checked;
+                    break;
+                case 'radio':
+                    if (element.checked) {
+                        value = element.value;
+                    }
+                    break;
+                case 'date':
+                    value = element.value;
+                    if (value) {
+                        try {
+                            value = new Date(value).toISOString();
+                        } catch (e) {
+                            console.error(`Error converting date value for ${dataQa}:`, e);
+                        }
+                    }
+                    break;
+                default:
+                    value = element.value;
+            }
+        } else {
+            value = element.value;
+        }
+
+        // Only add to formData if value is not undefined (handles unchecked radio buttons)
+        if (value !== undefined) {
+            formData[dataQa] = value;
+        }
+    });
+
+    return formData;
+}
+
 // Listen for messages from popup/background
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Content script received message:', message);
@@ -68,6 +124,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
         } catch (error) {
             console.error('Error filling form:', error);
+            sendResponse({
+                success: false,
+                error: error.message
+            });
+        }
+    } else if (message.type === 'EXTRACT_FORM') {
+        try {
+            const formData = extractFormData();
+            sendResponse({
+                success: true,
+                data: formData
+            });
+        } catch (error) {
+            console.error('Error extracting form data:', error);
             sendResponse({
                 success: false,
                 error: error.message

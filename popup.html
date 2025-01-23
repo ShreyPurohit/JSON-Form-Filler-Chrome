@@ -46,6 +46,15 @@
         button:hover:not(:disabled) {
             background: #1557b0;
         }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        #downloadLink {
+            display: none;
+        }
     </style>
 </head>
 
@@ -56,7 +65,11 @@
             <input type="file" id="jsonFile" accept=".json" />
             <div id="fileName" class="file-name"></div>
         </div>
-        <button id="fillForm" disabled>Fill Form</button>
+        <div class="button-group">
+            <button id="fillForm" disabled>Fill Form</button>
+            <button id="extractForm">Extract Form Data</button>
+        </div>
+        <a id="downloadLink" download="form-data.json">Download JSON</a>
     </div>
     <script src="popup.js"></script>
 </body>

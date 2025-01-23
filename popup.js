@@ -69,3 +69,44 @@ document.getElementById('fillForm').addEventListener('click', () => {
         }
     });
 });
+
+document.getElementById('extractForm').addEventListener('click', () => {
+    const extractButton = document.getElementById('extractForm');
+    const fileNameElement = document.getElementById('fileName');
+    const downloadLink = document.getElementById('downloadLink');
+
+    extractButton.disabled = true;
+    extractButton.textContent = 'Extracting...';
+
+    // Set a timeout to reset button state if no response
+    const timeout = setTimeout(() => {
+        extractButton.disabled = false;
+        extractButton.textContent = 'Extract Form Data';
+        fileNameElement.textContent = 'Error: Operation timed out';
+    }, 5000);
+
+    chrome.runtime.sendMessage({
+        type: 'EXTRACT_FORM'
+    }, (response) => {
+        clearTimeout(timeout);
+        extractButton.disabled = false;
+        extractButton.textContent = 'Extract Form Data';
+
+        if (response && response.success) {
+            const jsonString = JSON.stringify(response.data, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            downloadLink.href = url;
+            downloadLink.click();
+            URL.revokeObjectURL(url);
+
+            fileNameElement.textContent = 'Form data extracted successfully!';
+            setTimeout(() => {
+                fileNameElement.textContent = '';
+            }, 2000);
+        } else {
+            fileNameElement.textContent = `Error: ${response?.error || 'Failed to extract form data'}`;
+        }
+    });
+});

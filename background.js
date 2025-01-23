@@ -5,7 +5,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Handle messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'FILL_FORM') {
+    if (message.type === 'FILL_FORM' || message.type === 'EXTRACT_FORM') {
         chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
             if (!tab || !tab.id) {
                 sendResponse({ success: false, error: 'No active tab found' });
@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         }).then(() => {
                             // Retry sending message after injection
                             chrome.tabs.sendMessage(tab.id, message, (retryResponse) => {
-                                sendResponse(retryResponse || { success: false, error: 'Failed to fill form' });
+                                sendResponse(retryResponse || { success: false, error: 'Failed to process form' });
                             });
                         }).catch((error) => {
                             sendResponse({ success: false, error: error.message });
