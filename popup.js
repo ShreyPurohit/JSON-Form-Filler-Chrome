@@ -20,6 +20,7 @@ const elements = {
 
 // State management
 let jsonData = null;
+let isOperationInProgress = false;
 
 // UI Utilities
 const ui = {
@@ -93,12 +94,29 @@ const handlers = {
     },
 
     async handleFormOperation(type, button, data = null) {
+        if (isOperationInProgress) return;
+        isOperationInProgress = true;
         ui.setButtonState(button, true);
+
+        // Disable all buttons during operation
+        elements.fillForm.disabled = true;
+        elements.extractForm.disabled = true;
+        elements.jsonFile.disabled = true;
 
         const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error(ERROR_MESSAGES.TIMEOUT)), TIMEOUT_DURATION));
 
         try {
+            // Keep reference to window to prevent popup from closing
+            const currentWindow = window;
+            currentWindow.onbeforeunload = (e) => {
+                if (isOperationInProgress) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                }
+            };
+
             const response = await Promise.race([
                 new Promise((resolve) => chrome.runtime.sendMessage({ type, data }, resolve)),
                 timeoutPromise
@@ -122,7 +140,16 @@ const handlers = {
         } catch (error) {
             ui.showDetailedError(error);
         } finally {
+            isOperationInProgress = false;
             ui.setButtonState(button, false);
+
+            // Re-enable all buttons after operation
+            elements.fillForm.disabled = !jsonData;
+            elements.extractForm.disabled = false;
+            elements.jsonFile.disabled = false;
+
+            // Remove the onbeforeunload handler
+            window.onbeforeunload = null;
         }
     }
 };
